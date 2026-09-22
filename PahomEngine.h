@@ -2107,35 +2107,35 @@ struct PahomEngineStruct {
                 while (std::getline(PahomEngineSettings, sSettingsBufferString)) {
                     if (sSettingsBufferString == "vsync=true") {
                         bFlagVsync = true;
-                        Ln.send("PESettings:: Применен vsync=true", 1);
+                        Ln.send(1,"PESettings:: Применен vsync=true");
                     }
                     if (sSettingsBufferString == "vsync=false") {
                         bFlagVsync = false;
-                        Ln.send("PESettings:: Применен vsync=false", 1);
+                        Ln.send(1,"PESettings:: Применен vsync=false");
                     }
                     if (sSettingsBufferString == "random_engine=true") {
                         bFlagRandomEngine = true;
-                        Ln.send("PESettings:: Применен random_engine=true", 1);
+                        Ln.send(1,"PESettings:: Применен random_engine=true");
                     }
                     if (sSettingsBufferString == "random_engine=false") {
                         bFlagRandomEngine = false;
-                        Ln.send("PESettings:: Применен random_engine=false", 1);
+                        Ln.send(1,"PESettings:: Применен random_engine=false");
                     }
                     if (sSettingsBufferString == "xor64random=true") {
                         bFlagXor64random = true;
-                        Ln.send("PESettings:: Применен random_engine=true", 1);
+                        Ln.send(1,"PESettings:: Применен random_engine=true");
                     }
                     if (sSettingsBufferString == "xor64random=false") {
                         bFlagXor64random = false;
-                        Ln.send("PESettings:: Применен random_engine=false", 1);
+                        Ln.send(1,"PESettings:: Применен random_engine=false");
                     }
                     if (sSettingsBufferString == "fullscreen=false") {
                         bFlagFullScreen = false;
-                        Ln.send("PESettings:: Применен fullscreen=false");
+                        Ln.send(1,"PESettings:: Применен fullscreen=false");
                     }
                     if (sSettingsBufferString == "fullscreen=true") {
                         bFlagFullScreen = true;
-                        Ln.send("PESettings:: Применен fullscreen=true");
+                        Ln.send(1,"PESettings:: Применен fullscreen=true");
                     }
                     if (sSettingsBufferString.rfind(volume_atr, 0) == 0) {
                         fMasterVolume = stof(sSettingsBufferString.substr(volume_atr.length()));
@@ -2170,27 +2170,27 @@ struct PahomEngineStruct {
                     }
                     if (sSettingsBufferString == "render_blur=true") {
                         bRenderBlur = true;
-                        Ln.send("PESettings:: Применен render_blur=true");
+                        Ln.send(1,"PESettings:: Применен render_blur=true");
                     }
                     if (sSettingsBufferString == "render_blur=false") {
                         bRenderBlur = false;
-                        Ln.send("PESettings:: Применен render_blur=false");
+                        Ln.send(1,"PESettings:: Применен render_blur=false");
                     }
                     if (sSettingsBufferString == "EnableAnimationToImageFadeInOut=true") {
                         bFlagEnableAnimationToImageFadeInOut = true;
-                        Ln.send("PESettings:: Применен EnableAnimationToImageFadeInOut=true");
+                        Ln.send(1,"PESettings:: Применен EnableAnimationToImageFadeInOut=true");
                     }
                     if (sSettingsBufferString == "EnableAnimationToImageFadeInOut=false") {
                         bFlagEnableAnimationToImageFadeInOut = false;
-                        Ln.send("PESettings:: Применен EnableAnimationToImageFadeInOut=false");
+                        Ln.send(1,"PESettings:: Применен EnableAnimationToImageFadeInOut=false");
                     }
                     if (sSettingsBufferString == "use_custom_render=true") {
                         bUseCustomRender = true;
-                        Ln.send("PESettings:: Применен use_custom_render=true");
+                        Ln.send(1,"PESettings:: Применен use_custom_render=true");
                     }
                     if (sSettingsBufferString == "use_custom_render=false") {
                         bUseCustomRender = false;
-                        Ln.send("PESettings:: Применен use_custom_render=false");
+                        Ln.send(1,"PESettings:: Применен use_custom_render=false");
                     }
                     if (sSettingsBufferString.rfind(glversion[0], 0) == 0) {
                         major_gl = (stoi(sSettingsBufferString.substr(glversion[0].length())));
@@ -2210,29 +2210,29 @@ struct PahomEngineStruct {
                     }
                     if (sSettingsBufferString == "noise=true") {
                         bShowNoiseBackground = true;
-                        Ln.send("PESettings:: Применен noise=true", 1);
+                        Ln.send(1,"PESettings:: Применен noise=true");
                     }
                     if (sSettingsBufferString == "noise=false") {
                         bShowNoiseBackground = false;
-                        Ln.send("PESettings:: Применен noise=false", 1);
+                        Ln.send(1,"PESettings:: Применен noise=false");
                     }
                     //use_low_textures=
                     if (sSettingsBufferString == "use_low_textures=true") {
                         bUseLowTextures = true;
-                        Ln.send("PESettings:: Применен use_low_textures=true", 1);
+                        Ln.send(1,"PESettings:: Применен use_low_textures=true");
                     }
                     if (sSettingsBufferString == "use_low_textures=false") {
                         bUseLowTextures = false;
-                        Ln.send("PESettings:: Применен use_low_textures=false", 1);
+                        Ln.send(1,"PESettings:: Применен use_low_textures=false");
                     }
                     //use_low_textures=
                     if (sSettingsBufferString == "use_low_audio_quality=true") {
                         bUseLowAudioQuality = true;
-                        Ln.send("PESettings:: Применен use_low_audio_quality=true", 1);
+                        Ln.send(1,"PESettings:: Применен use_low_audio_quality=true");
                     }
                     if (sSettingsBufferString == "use_low_audio_quality=false") {
                         bUseLowAudioQuality = false;
-                        Ln.send("PESettings:: Применен use_low_audio_quality=false", 1);
+                        Ln.send(1,"PESettings:: Применен use_low_audio_quality=false");
                     }
                     if (sSettingsBufferString.rfind(sProxy[0], 0) == 0) {
                         sProxyHost = sSettingsBufferString.substr(sProxy[0].length());
@@ -2572,79 +2572,55 @@ struct PahomEngineStruct {
         const char* str[] = { "Низкие" ,"Высокие" ,"Ультра" };
         sTexturePresetName = str[id];
     }
+    // new hotswap texture loader
     void ReloadTextures(int preset_id) {
-        int64_t i64Size = 0;
+       
+            log(" (OGL) cleanup old textures", 1);
+            size_t i64NewTextureSize = 0;
+            const auto* sAssetSource = &assets.asset_ultra_low; // по умолчанию
 
-        // clear video memory
-        log(std::format(" (OGL) clearing.. {}", std::size(ImageData.TextureArray)), 1);
-        glDeleteTextures(std::size(ImageData.TextureArray), ImageData.TextureArray);
-        // low settings
-        if(preset_id == 0){
-            
-            log(" (OGL) set preset LOW", 1);
-            for (int _textures_ld = 0; _textures_ld < std::size(assets.asset_ultra_low); _textures_ld++) {
-                log(std::format(" (OGL) Loading.. {} {}", _textures_ld, (assets.asset_ultra_low[_textures_ld])), 1);
-                if (img->LoadTextureFromFile(reinterpret_cast<const char*>(assets.asset_ultra_low[_textures_ld].data()),
-                    &ImageData.TextureArray[_textures_ld],
-                    &ImageData.TextureX[_textures_ld],
-                    &ImageData.TextureY[_textures_ld],
-                    ImageData.TextureBufferArray[_textures_ld]);
-                    i64Size += (ImageData.TextureX[_textures_ld] * ImageData.TextureY[_textures_ld] * 4)) {
-                    log(std::format(" (OGL) loaded_buffer {} MB", (i64Size / 1024) / 1024), 1);
-                }
-                else {
-                    log(std::format(" (OGL) loaded_buffer {} MB error", (i64Size / 1024) / 1024), 1);
-                }
-                //*data = _textures_ld;
+            if (preset_id == 0) {
+                i64NewTextureSize = std::size(assets.asset_ultra_low);
+                sAssetSource = &assets.asset_ultra_low;
+                log(" (OGL) set preset LOW", 1);
             }
-
-             
-        }
-        // high settings
-        if (preset_id == 1) {
-            log(" (OGL) set preset HIGH", 1);
-            for (int _textures_ld = 0; _textures_ld < std::size(assets.asset); _textures_ld++) {
-                log(std::format(" (OGL) Loading.. {} {}", _textures_ld, (assets.asset[_textures_ld])), 1);
-                if (img->LoadTextureFromFile(reinterpret_cast<const char*>(assets.asset[_textures_ld].data()),
-                    &ImageData.TextureArray[_textures_ld],
-                    &ImageData.TextureX[_textures_ld],
-                    &ImageData.TextureY[_textures_ld],
-                    ImageData.TextureBufferArray[_textures_ld]);
-                    i64Size += (ImageData.TextureX[_textures_ld] * ImageData.TextureY[_textures_ld] * 4)) {
-                    log(std::format(" (OGL) loaded_buffer {} MB", (i64Size / 1024) / 1024), 1);
-                }
-                else {
-                    log(std::format(" (OGL) loaded_buffer {} MB error", (i64Size / 1024) / 1024), 1);
-                }
-                //*data = _textures_ld;
+            else if (preset_id == 1) {
+                i64NewTextureSize = std::size(assets.asset);
+                sAssetSource = &assets.asset;
+                log(" (OGL) set preset HIGH", 1);
             }
-
-
-        }
-        // ultra settings
-        if (preset_id == 2) {
+            else if (preset_id == 2) {
+                i64NewTextureSize = std::size(assets.UltraTextures);
+                sAssetSource = &assets.UltraTextures;
+                log(" (OGL) set preset ULTRA", 1);
+            }
+            glDeleteTextures(i64NewTextureSize, ImageData.TextureArray);
+            for (int64_t ntx = 0; ntx < i64NewTextureSize; ntx++) {
+                delete[] ImageData.TextureBufferArray[ntx];
+            }
             int64_t i64Size = 0;
-            
 
-            for (int _textures_ld = 0; _textures_ld < std::size(assets.UltraTextures); _textures_ld++) {
-                log(std::format(" (OGL) (preset: ultra_max:) Loading.. {} {}", _textures_ld, assets.UltraTextures[_textures_ld]), 1);
-                if (img->LoadTextureFromFile(reinterpret_cast<const char*>(assets.UltraTextures[_textures_ld].data()),
+            for (size_t _textures_ld = 0; _textures_ld < i64NewTextureSize; _textures_ld++) {
+                log(std::format(" (OGL) Loading.. {} {}", _textures_ld, (*sAssetSource)[_textures_ld]), 1);
+
+                if (img->LoadTextureFromFile(
+                    reinterpret_cast<const char*>((*sAssetSource)[_textures_ld].data()),
                     &ImageData.TextureArray[_textures_ld],
                     &ImageData.TextureX[_textures_ld],
                     &ImageData.TextureY[_textures_ld],
-                    ImageData.TextureBufferArray[_textures_ld]);
-                    i64Size += (ImageData.TextureX[_textures_ld] * ImageData.TextureY[_textures_ld] * 4)) {
+                    ImageData.TextureBufferArray[_textures_ld]))
+                {
+                    i64Size += (ImageData.TextureX[_textures_ld] * ImageData.TextureY[_textures_ld] * 4);
                     log(std::format(" (OGL) loaded_buffer {} MB", (i64Size / 1024) / 1024), 1);
                 }
                 else {
                     log(std::format(" (OGL) loaded_buffer {} MB error", (i64Size / 1024) / 1024), 1);
                 }
-
-               // *data = _textures_ld;
             }
 
-
-        }
+            iReloadTexturesPresetID = preset_id;
+            SetPresetName(preset_id);
+        
     }
    
     void progress_bar(float fragtion);
