@@ -269,7 +269,7 @@ void GamepadTestUI() {
         fAxisL.x = getAxisGamepad().x;
         fAxisL.y = getAxisGamepad().y;
         fAxisR.x = getAxisGamepad().z;
-        fAxisR.y = getAxisGamepad().w;
+        fAxisR.y = getAxisGamepad().w; 
         pos_x(30); ImGui::Text("GamepadTest");
         pos_x(30); ImGui::Separator();
         pos_x(60);

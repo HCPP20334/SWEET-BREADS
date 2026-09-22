@@ -29,20 +29,20 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -82,9 +82,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
-    <IncludePath>C:\Users\Администратор\Desktop\projects\C++\GovnoClick;$(IncludePath)</IncludePath>
-    <ExternalIncludePath>C:\Users\Администратор\Desktop\projects\C++\GovnoClick;$(ExternalIncludePath)</ExternalIncludePath>
-    <LibraryPath>C:\Users\Администратор\Desktop\projects\C++\GovnoClick;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir);$(IncludePath)</IncludePath>
+    <ExternalIncludePath>$(ProjectDir);$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>.\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -183,6 +183,15 @@
     <ClInclude Include="imgui_stdlib.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="obxrac32b64.hpp" />
+    <ClInclude Include="frames.hpp" />
+    <ClInclude Include="backend.hpp" />
+    <ClInclude Include="render.hpp" />
+    <ClInclude Include="net.hpp" />
+    <ClInclude Include="logger.hpp" />
+    <ClInclude Include="tui.hpp" />
+    <ClInclude Include="JoyStick.h" />
+    <ClInclude Include="ImGamepadAPI.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\misc\natvis\imgui.natvis" />

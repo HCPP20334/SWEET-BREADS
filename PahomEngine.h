@@ -42,11 +42,14 @@
 #include <pdh.h>
 #include <dwmapi.h>
 #include "ImGamepadAPI.hpp"
-#include "tui.hpp"
+#include "logger.hpp"
 #include <commdlg.h>
 #include <span>
-#include "backend.hpp"
+#include "backend.hpp"  
+#include <future>
+#include "net.hpp"
 #pragma comment(lib,"dwmapi.lib")
+
 
 //
 #if !_HAS_CXX20
@@ -105,6 +108,9 @@ typedef void (APIENTRY* PFNGLGETBUFFERPARAMETERIVPROC)(GLenum target, GLenum pna
 int64_t fstack(void* reg,std::string param_name) {
     std::cout << param_name << "=" << reinterpret_cast<int64_t>(reg)<<"stack="<< reg;
     return reinterpret_cast<int64_t>(reg);
+}
+std::string to_str_ptr(const void* ptr) {
+    return std::format("{:p}",(ptr));    
 }
 std::string str_stack(void* reg, const std::string& param_name) {
     // Cast void* to const char* (assuming reg points to a null-terminated string)
@@ -295,7 +301,7 @@ namespace ImGui {
 
         ImVec2 pos = window->DC.CursorPos;
         ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
-
+        
         const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
         ItemSize(bb, style.FramePadding.y);
         if (!ItemAdd(bb, id))
@@ -403,6 +409,7 @@ namespace ImGui {
 
         // Проверка взаимодействия
         bool hovered, held;
+        
         bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_MouseButtonLeft);
 
         // Цвет в зависимости от состояния
@@ -432,16 +439,16 @@ namespace ImGui {
         ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, ImGui::GetColorU32(col));
         ImGui::Dummy(ImVec2(size_x, thickness));
     }
-    void widget_log(std::string_view t) {
-        std::cout << t;
+    Logger ln;
+    void widget_log(std::string t) {
+        ln.send(t);
     }
     void RenderBlur(HWND hwnd) {
         MARGINS margins = { -1 };
         HRESULT hr = DwmExtendFrameIntoClientArea(hwnd, &margins);
 
-        if (FAILED(hr)) { // Используем FAILED() для корректной проверки HRESULT на ошибку
+        if (FAILED(hr)) { 
             SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 13);
-            // Выводим код ошибки в шестнадцатеричном формате
             widget_log(std::format(" [PahomEngine](dwm) AeroBlur Error. HRESULT: 0x{:X}\n", (unsigned int)hr));
             SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
         }
@@ -474,7 +481,7 @@ struct CImage {
     GLuint gl_buffer;
     unsigned char CICharBuffer[256];
     bool CreateImg();
-    bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height, unsigned char* imgBuffer);
+    bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height, uint8_t*& imgBuffer);
     ImVec2 ResizeImage(uint64_t fCArrayFloat);
     uint64_t InitCImage(std::string png_file);
     uint32_t pixel_buffer[256];
@@ -582,7 +589,7 @@ bool CImage::LoadTextureRawData(unsigned char* raw, GLuint* out_texture, int* ou
 
     }
 }//
-bool CImage::LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height, uint8_t* imgBuffer) {
+bool CImage::LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height, uint8_t*& imgBuffer) {
     int image_width = 0;
     int image_height = 0;
     static int ic = 0;
@@ -593,9 +600,7 @@ bool CImage::LoadTextureFromFile(const char* filename, GLuint* out_texture, int*
         return false;
     }
     else {
-        imgBuffer = imageData;
         std::cout << std::dec << image_width << " x " << image_height << " " << PE_ARRAYSIZE(imageData) << "  " << PE_ARRAYSIZE(imgBuffer) << std::endl;
-       
         GLuint image_texture;
         glGenTextures(1, &image_texture);
         glBindTexture(GL_TEXTURE_2D, image_texture);
@@ -605,32 +610,42 @@ bool CImage::LoadTextureFromFile(const char* filename, GLuint* out_texture, int*
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
-        stbi_image_free(imageData);
+        
 
         *out_texture = image_texture;
         *out_width = image_width;
         *out_height = image_height;
-
+        //*imgBuffer = *imageData;
+        size_t imageBytes = image_width * image_height * 4;
+        imgBuffer = new uint8_t[imageBytes];
+        std::memcpy(imgBuffer, imageData, imageBytes);
+        stbi_image_free(imageData);
+        std::cout << (uint8_t**)imgBuffer << " " << (uint8_t**)imageData << "\n";
         glBindTexture(GL_TEXTURE_2D, 0);
         
     }
 }//
 struct KurlikAUDIO {
-    std::string audiolist[13] = { "assets/audio/kurlik.wav",
-                                 "assets/audio/voda.wav",
-                                 "assets/audio/intro.wav",
-                                 "assets/audio/pidoras.wav",
-                                 "assets/audio/mrrobot.wav",
-                                 "assets/audio/pain100_1.wav",
-                                 "assets/audio/smex.wav",
+     std::string audiolist[14] = 
+     {
+                                 "assets/audio/kurlik.wav",//0
+                                 "assets/audio/voda.wav",   //1
+                                 "assets/audio/intro.wav",  //2
+                                 "assets/audio/pidoras.wav",//3
+                                 "assets/audio/mrrobot.wav",//4
+                                 "assets/audio/pain100_1.wav",//5
+                                 "assets/audio/smex.wav",//6
                                  "assets/audio/aaa.wav",
                                  "assets/audio/khuli-ty-govnom-to-vymazalsia.wav",
                                  "assets/audio/ponimaesh-chto-ty-poekhavshii.wav",
                                  "assets/audio/sound_game.wav",
                                  "assets/audio/click.wav",
-                                 "assets/audio/a.wav"
+                                 "assets/audio/a.wav",
+                                 "assets/audio/the_end.wav"
     };
-    std::string audiolist_low[13] = { "assets/audio/low/kurlik.wav",
+    std::string audiolist_low[14] = 
+    { 
+                                 "assets/audio/low/kurlik.wav",
                                  "assets/audio/low/voda.mp3",
                                  "assets/audio/low/intro.mp3",
                                  "assets/audio/low/pidoras.mp3",
@@ -642,7 +657,8 @@ struct KurlikAUDIO {
                                  "assets/audio/low/ponimaesh-chto-ty-poekhavshii.mp3",
                                  "assets/audio/low/sound_game.mp3",
                                  "assets/audio/low/click.mp3",
-                                 "assets/audio/low/a.mp3"
+                                 "assets/audio/low/a.mp3",
+                                 "assets/audio/the_end.wav"
     };
     bool bUseLowAudioQuality = false;
     std::vector<std::string> musicFiles;
@@ -670,6 +686,26 @@ struct KurlikAUDIO {
         float min = 0.0f;
         float max = 0.0f;
     };
+    bool is_ptr_valid(auto& e) {
+        return (e != nullptr);
+    }
+    const char* str_active(uint8_t st) {
+        return (st ? "Active" : "None");
+    }
+    void AudioStatUI()
+    {
+        ImGui::SetCursorPos({ 30,10 });
+        uint8_t u8channels[3] = { 0,0,0 };
+        u8channels[0] = is_ptr_valid(audioDevice);
+        u8channels[1] = is_ptr_valid(audioDevice2);
+        u8channels[2] = is_ptr_valid(audioDevice3);
+        
+        ImGui::Text("audio_channel_state: [0:%s,1:%s,2:%s]",
+            str_active(u8channels[0]),
+            str_active(u8channels[1]),
+            str_active(u8channels[2])
+        );
+    }
     std::unique_ptr<gain> audioGain = std::make_unique<gain>();
     struct time {
         float current = 0.0f;
@@ -690,15 +726,51 @@ struct KurlikAUDIO {
         }
         fileAssets.close();
     }
+    Logger ln;
     void cleanup(auto& device) {
         if (device) {
             device = nullptr;
-            std::cout << "  [PahomEngine::Audio] AudioDevice (" << &device << ") Cleanup\n";
-
+            ln.send(std::format("  Audio AudioDevice ( {} ) Cleanup\n", to_str_ptr(&device)));
         }
         else {
-            std::cout << "  [PahomEngine::Audio] AudioDevice (" << &device << ") not Allocated\n";
+            ln.send(std::format("  Audio AudioDevice ( {}) not Allocated\n", to_str_ptr(&device)));
         }
+    }
+    // setVolume(float volume) value or 0..1.0 
+    void setVolume(float volume) {
+        static uint8_t u8audioError = 0;
+        if (volume >= 1.0) {
+            volume = 1;
+            ln.send("  Audio setVolume():=> volume not >1\n");
+            u8audioError = 1;
+        }
+        else if(volume < 0) {
+            volume = 0.1;
+            ln.send("  [PahomEngine::Audio] setVolume():=> volume not <0\n");
+            u8audioError = 1;
+        }
+        if (!u8audioError) {
+            
+            if (audioDevice) {
+                audioDevice.setVolume(volume);
+            }
+            else {
+                ln.send("  [PahomEngine::Audio] setVolume():=> audioDevice (id:0) not Active\n");
+            }
+            if (audioDevice2) {
+                audioDevice2.setVolume(volume);
+            }
+            else {
+                ln.send("  [PahomEngine::Audio] setVolume():=> audioDevice (id:1) not Active\n");
+            }
+            if (audioDevice3) {
+                audioDevice3.setVolume(volume);
+            }
+            else {
+                ln.send("  [PahomEngine::Audio] setVolume():=> audioDevice (id:2) not Active\n");
+            }
+        }
+
     }
     void openFileDialog(std::string& fileName) {
         // common dialog box structure, setting all fields to 0 is important
@@ -997,8 +1069,9 @@ void KurlikAUDIO::pause() {
     audioDevice.pause();
 }
 struct STRINGSDATA {
+    Logger ln;
     void log(std::string_view text,std::string_view moduleName) {
-        std::cout<<"[PahomEngine::"+std::format("%s]",moduleName) << text << std::endl;
+        ln.send(std::format("( %s ) %s", moduleName.data(), text.data()));
    }
     std::string_view PAHOM_ENGINE =
         " ����������     ����    ���    ���   ����   ���    �����   \n"
@@ -1027,7 +1100,7 @@ struct STRINGSDATA {
 // 
 
 
-#define engine_bulid std::wstring(L"0.9.52 (modify_release)");
+#define engine_bulid std::wstring(L"1.0.3 (release)");
 
 //
 struct ASSETSDATA {
@@ -1090,6 +1163,11 @@ struct IMAGEDATA {
     uint8_t* TextureBufferArray[256];
     int TextureX[256];
     int TextureY[256];
+    void fill_memory() {
+        for (int m = 0; m < 255; m++) {
+            TextureBufferArray[m] = nullptr;
+        }
+    }
     int64_t GetImTexture(int idx) const {
         return reinterpret_cast<int64_t>(reinterpret_cast<void*>(this->TextureArray[idx]));
     }
@@ -1099,6 +1177,8 @@ struct KEYMAPDATA {
     int8_t u8BACK = 'D';
     int8_t u8RESET = 'R';
     int8_t u8SPACE = VK_SPACE;
+    int8_t u8SHIFT = VK_LSHIFT;
+    int8_t u8END = VK_END;
     int8_t u8JUMP = 'W';
     int8_t u8ButtonLeft = 'L';
     int8_t u8ButtonRight = 'R';
@@ -1174,9 +1254,9 @@ struct MEMORYDATA {
 
         return result;
     }
-
+    Logger ln;
     void Mem_log(std::string_view text) {
-        std::cout << text << std::endl;
+        ln.send(text.data());
     }
     std::string GetProcessName() {
         HANDLE hProcess = GetCurrentProcess();
@@ -1308,18 +1388,19 @@ struct EXCEPTIONS {
     std::string sLastError;
     void* pLastStack = nullptr;
     int64_t i64MemoryUsageProcess = 0;
+    Logger Ln;
     void log(std::string t) {
-        std::cout << "Exception Error: " << t << std::endl;
+        Ln.send("Exception Error: " + t);
 
     }
     ~EXCEPTIONS() {
-        std::cout << " (PahomEngine) EXCEPTIONS deleted!\n";
+        Ln.send(" (PahomEngine) EXCEPTIONS deleted!\n");
     }
     void GetProcessMemoryUsage() {
         PROCESS_MEMORY_COUNTERS pmc;
         pmc.cb = sizeof(pmc);
         GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-        i64MemoryUsageProcess = static_cast<int64_t>(pmc.PagefileUsage);
+        i64MemoryUsageProcess = static_cast<int64_t>(pmc.WorkingSetSize);
     }
     void Write(const std::string& t, void* pErrorSegment) {
         ErrorTextures = true;
@@ -1532,23 +1613,23 @@ struct cpu_bench64 {
     std::atomic<std::chrono::steady_clock::time_point> intime;
     std::atomic<std::chrono::steady_clock::time_point> outime;
     // work not correcty #FIXME
-    void gpu_render(int64_t count) {
-        GLuint textureBuffer[1000];
-        unsigned char textureBufferu8[1000];
-        int ximage[1000],yimage[1000];
-        intime = std::chrono::high_resolution_clock::now();
-        for (int64_t image_render = 0; image_render < count; image_render++) {
-            if (Textures->LoadTextureFromFile("assets/pahom.png", &textureBuffer[image_render], &ximage[image_render], &yimage[image_render], &textureBufferu8[image_render])) {
-                vram.fetch_add(((ximage[image_render] * yimage[image_render]) * 4), std::memory_order_relaxed);
-                i64sucTx += image_render;
-            }
-        }
-        std::cout << " --------------------------------------------------------------" << std::endl;
-        std::cout << "loaded " << i64sucTx.load() << " / " << count << " vramLoaded: " << vram.load() / 1024 / 1024 << "MB" << std::endl;
-        outime = std::chrono::high_resolution_clock::now();
-        outtime.fetch_add(std::chrono::duration_cast<std::chrono::milliseconds>(outime.load() - intime.load()).count(), std::memory_order_relaxed);
-        std::cout << "time :" << outtime.load() <<" ms" << std::endl;
-    }
+    //void gpu_render(int64_t count) {
+    //    GLuint textureBuffer[1000];
+    //    unsigned char textureBufferu8[1000];
+    //    int ximage[1000],yimage[1000];
+    //    intime = std::chrono::high_resolution_clock::now();
+    //    for (int64_t image_render = 0; image_render < count; image_render++) {
+    //        if (Textures->LoadTextureFromFile("assets/pahom.png", &textureBuffer[image_render], &ximage[image_render], &yimage[image_render], &textureBufferu8[image_render])) {
+    //            vram.fetch_add(((ximage[image_render] * yimage[image_render]) * 4), std::memory_order_relaxed);
+    //            i64sucTx += image_render;
+    //        }
+    //    }
+    //    std::cout << " --------------------------------------------------------------" << std::endl;
+    //    std::cout << "loaded " << i64sucTx.load() << " / " << count << " vramLoaded: " << vram.load() / 1024 / 1024 << "MB" << std::endl;
+    //    outime = std::chrono::high_resolution_clock::now();
+    //    outtime.fetch_add(std::chrono::duration_cast<std::chrono::milliseconds>(outime.load() - intime.load()).count(), std::memory_order_relaxed);
+    //    std::cout << "time :" << outtime.load() <<" ms" << std::endl;
+    //}
     std::string hashFn128(int64_t sz) {
         std::string bff;
         i32CallFunc.fetch_add(1, std::memory_order_relaxed);
@@ -1612,22 +1693,22 @@ struct cpu_bench64 {
 
     }
     // work not correcty #FIXME
-    void mt_gpu() {
-        HANDLE hHandleConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        i32max_thread.store(std::jthread::hardware_concurrency(), std::memory_order_relaxed);
-        i64ChunkSize.store(i64MaxSize / i32max_thread, std::memory_order_relaxed);
-        std::vector<std::jthread> cpu_threads;
-        cpu_threads.reserve(i32max_thread.load());
-        for (uint32_t i32threads = 0; i32threads < i32max_thread.load(); i32threads++) {
-            cpu_threads.emplace_back(&cpu_bench64::gpu_render, this, 1000 / i32max_thread.load());
-            SetConsoleTextAttribute(hHandleConsole, 35);
-            std::cout << " join() -> std::jthread tCPU" << i32threads << std::endl;
-            SetConsoleTextAttribute(hHandleConsole, 15);
-            
-        }
-        
+    //void mt_gpu() {
+    //    HANDLE hHandleConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    //    i32max_thread.store(std::jthread::hardware_concurrency(), std::memory_order_relaxed);
+    //    i64ChunkSize.store(i64MaxSize / i32max_thread, std::memory_order_relaxed);
+    //    std::vector<std::jthread> cpu_threads;
+    //    cpu_threads.reserve(i32max_thread.load());
+    //    for (uint32_t i32threads = 0; i32threads < i32max_thread.load(); i32threads++) {
+    //        cpu_threads.emplace_back(&cpu_bench64::gpu_render, this, 1000 / i32max_thread.load());
+    //        SetConsoleTextAttribute(hHandleConsole, 35);
+    //        std::cout << " join() -> std::jthread tCPU" << i32threads << std::endl;
+    //        SetConsoleTextAttribute(hHandleConsole, 15);
+    //        
+    //    }
+    //    
 
-    }
+    //}
 };
 
 struct GameUI {
@@ -1724,16 +1805,17 @@ struct GameUI {
         ImGui::PushStyleColor(ImGuiCol_Text, conv(colText));
         if (Font) {
             ImGui::PushFont(Font);
-            isClickedButton =  ImGui::Button(label, size);
+            isClickedButton = ImGui::Button(label, size);
             ImGui::PopFont();
         }
         else {
             std::cout << "[PahomEngine::GameUI] func CustomButton(...,ImFont *Font = nullptr); Font Error!" << std::endl;
-            isClickedButton =  ImGui::Button(label, size);
+            isClickedButton = ImGui::Button(label, size);
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(3);
         return isClickedButton;
+        
     }
     void TextAnimated(const std::string& text, int type = 0, int speed = 3) {
         static int t = 0, p = 0; static bool dir = true;
@@ -1902,6 +1984,7 @@ struct vec_api {
     void addpb(_Vec& d, _Args&&... args) { d.emplace_back(std::forward<_Args>(args)...); }
     template<typename _Vec>
     bool isEmpty(_Vec& d) { return d.empty(); }
+    // not used
     template<typename _Vec, typename _v>
     void eif(_Vec& d, std::string ifop, auto to) {
         std::erase_if(d, [](_v& n) {
@@ -1913,6 +1996,7 @@ struct vec_api {
             });
     }
 };
+
 template<typename _Same>
 using atc = std::atomic<_Same>;
 struct threads {
@@ -1936,12 +2020,18 @@ struct threads {
 };
 struct PahomEngineStruct {
     //
-    std::string sBuild = "0.9.52 (modify_release)";
-    std::string sBuildGame = "0.9.22 (release)";
+    nethttp* lnethttp = new nethttp();
+    std::string sBuild = "1.0.4.1 (release)";
+    std::string sBuildGame = "1.0.1 (release)";
     //
-    std::wstring sWBuild = L"0.9.52 (modify_release)";
-    std::wstring sWBuildGame = L"0.9.22 (release)";
+    std::wstring sWBuild = L"1.0.4.1 (release)";
+    std::wstring sWBuildGame = L"1.0.1 (release)";
     //
+    using Clock = std::chrono::high_resolution_clock;
+    double TimeElap(auto& timeIn, auto& timeOut) {
+        std::chrono::duration<double> _elp = (timeOut - timeIn);
+        return _elp.count();
+    }
     bool CVsync = true;
     uint64_t fCPoint = 0;
     int64_t fStep = 13;
@@ -1949,11 +2039,16 @@ struct PahomEngineStruct {
         i64PahomSize[0] = width;
         i64PahomSize[1] = height;
     }
+    void setSizeBread(int64_t width, int64_t height) {
+        i64BreadSize[0] = width;
+        i64BreadSize[1] = height;
+    }
     CImage         *img         = new CImage();
     JoyStickAPI    *ptrGamepad1 = new JoyStickAPI(1);
     cpu_bench64    *Bench64ptr  = new cpu_bench64();
     GameUI         *UI          = new GameUI();
     GamepadButtons *GamepadUI   = new GamepadButtons();
+   
     std::random_device rd;
 
     //
@@ -1964,7 +2059,15 @@ struct PahomEngineStruct {
     }
     bool bIsRandomEngineUsed = true;
     ~PahomEngineStruct() {
+        if (s) delete s;
+        if (logs) delete logs;
         std::cout << " (PahonEngine) " << sBuild << " cleanup!\n";
+    }
+    template<typename T>
+    using clear_type = std::decay_t<T>;
+    template<typename T>
+    constexpr bool is_type(auto&& e) {
+        return std::is_same_v<clear_type<decltype(e)>, T>;
     }
     //
     struct GameSettingsOffsets {
@@ -1989,79 +2092,105 @@ struct PahomEngineStruct {
         bool bKeyLDetected = false, bKeyRDetected = false;
         bool bRenderBlur = false;
         bool bFlagEnableAnimationToImageFadeInOut = false;
+        bool bFlagFullScreen = false;
         bool bUseLowTextures = false;
         bool bUseLowAudioQuality = false;
         bool bFlagXor64random = false;
+        std::string sProxyHost = "";
+        int iProxyPort = 0;
+        std::string sProxy[2] = {"proxy_host=","proxy_port="};
         std::string preset_ = "preset=";
+        Logger Ln;
         void ParseConfig() {
             std::ifstream PahomEngineSettings("PahomEngine.cfg");
             if (PahomEngineSettings.is_open()) {
                 while (std::getline(PahomEngineSettings, sSettingsBufferString)) {
                     if (sSettingsBufferString == "vsync=true") {
                         bFlagVsync = true;
-                        //Pengine.log("PESettings:: Применен vsync=true", 1);
+                        Ln.send("PESettings:: Применен vsync=true", 1);
                     }
                     if (sSettingsBufferString == "vsync=false") {
                         bFlagVsync = false;
-                        //Pengine.log("PESettings:: Применен vsync=false", 1);
+                        Ln.send("PESettings:: Применен vsync=false", 1);
                     }
                     if (sSettingsBufferString == "random_engine=true") {
                         bFlagRandomEngine = true;
-                       // Pengine.log("PESettings:: Применен random_engine=true", 1);
+                        Ln.send("PESettings:: Применен random_engine=true", 1);
                     }
                     if (sSettingsBufferString == "random_engine=false") {
                         bFlagRandomEngine = false;
-                        //Pengine.log("PESettings:: Применен random_engine=false", 1);
+                        Ln.send("PESettings:: Применен random_engine=false", 1);
                     }
                     if (sSettingsBufferString == "xor64random=true") {
                         bFlagXor64random = true;
-                        // Pengine.log("PESettings:: Применен random_engine=true", 1);
+                        Ln.send("PESettings:: Применен random_engine=true", 1);
                     }
                     if (sSettingsBufferString == "xor64random=false") {
                         bFlagXor64random = false;
-                        //Pengine.log("PESettings:: Применен random_engine=false", 1);
+                        Ln.send("PESettings:: Применен random_engine=false", 1);
+                    }
+                    if (sSettingsBufferString == "fullscreen=false") {
+                        bFlagFullScreen = false;
+                        Ln.send("PESettings:: Применен fullscreen=false");
+                    }
+                    if (sSettingsBufferString == "fullscreen=true") {
+                        bFlagFullScreen = true;
+                        Ln.send("PESettings:: Применен fullscreen=true");
                     }
                     if (sSettingsBufferString.rfind(volume_atr, 0) == 0) {
                         fMasterVolume = stof(sSettingsBufferString.substr(volume_atr.length()));
+                        Ln.send(1, "PESettings:: Применен volume={}", fMasterVolume);
                     }
                     if (sSettingsBufferString.rfind(cpu_atr, 0) == 0) {
                         i64CPUDelay = stoll(sSettingsBufferString.substr(cpu_atr.length()));
+                        Ln.send(1, "PESettings:: Применен cpu_delay={}", i64CPUDelay);
                     }
                     if (sSettingsBufferString.rfind(controls_atr[0], 0) == 0) {
                         bKeyLDetected = true;
                         u8BindKeyLeft = static_cast<int8_t>(stoi(sSettingsBufferString.substr(controls_atr[0].length())));
+                        Ln.send(1, "PESettings:: Применен bind_key_left={}", u8BindKeyLeft);
                     }
                     
                     if (sSettingsBufferString.rfind(controls_atr[1], 0) == 0) {
                         bKeyRDetected = true;
                         u8BindKeyRight = static_cast<int8_t>(stoi(sSettingsBufferString.substr(controls_atr[1].length())));
+                        Ln.send(1, "PESettings:: Применен bind_key_right={}", u8BindKeyRight);
                     }
                     if (sSettingsBufferString.rfind(res[0], 0) == 0) {
                         i64WindowSize[0] = stoll(sSettingsBufferString.substr(res[0].length()));
+                        Ln.send(1, "PESettings:: Применен width={}", i64WindowSize[0]);
                     }
                     if (sSettingsBufferString.rfind(res[1], 0) == 0) {
                         i64WindowSize[1] = stoll(sSettingsBufferString.substr(res[1].length()));
+                        Ln.send(1, "PESettings:: Применен height={}", i64WindowSize[1]);
                     }
                     if (sSettingsBufferString.rfind(preset_, 0) == 0) {
                         iPresetID = stoi(sSettingsBufferString.substr(preset_.length()));
+                        Ln.send(1, "PESettings:: Применен preset={}", iPresetID);
                     }
                     if (sSettingsBufferString == "render_blur=true") {
                         bRenderBlur = true;
+                        Ln.send("PESettings:: Применен render_blur=true");
                     }
                     if (sSettingsBufferString == "render_blur=false") {
                         bRenderBlur = false;
+                        Ln.send("PESettings:: Применен render_blur=false");
                     }
                     if (sSettingsBufferString == "EnableAnimationToImageFadeInOut=true") {
                         bFlagEnableAnimationToImageFadeInOut = true;
+                        Ln.send("PESettings:: Применен EnableAnimationToImageFadeInOut=true");
                     }
                     if (sSettingsBufferString == "EnableAnimationToImageFadeInOut=false") {
                         bFlagEnableAnimationToImageFadeInOut = false;
+                        Ln.send("PESettings:: Применен EnableAnimationToImageFadeInOut=false");
                     }
                     if (sSettingsBufferString == "use_custom_render=true") {
                         bUseCustomRender = true;
+                        Ln.send("PESettings:: Применен use_custom_render=true");
                     }
                     if (sSettingsBufferString == "use_custom_render=false") {
                         bUseCustomRender = false;
+                        Ln.send("PESettings:: Применен use_custom_render=false");
                     }
                     if (sSettingsBufferString.rfind(glversion[0], 0) == 0) {
                         major_gl = (stoi(sSettingsBufferString.substr(glversion[0].length())));
@@ -2069,7 +2198,7 @@ struct PahomEngineStruct {
                             major_gl = 3;
                             std::cout << " (PahomEngine) gl_major not < 3\n";
                         }*/
-
+                        Ln.send(1, "PESettings:: Применен gl_major={}", major_gl);
                     }
                     if (sSettingsBufferString.rfind(glversion[1], 0) == 0) {
                         minor_gl = (stoi(sSettingsBufferString.substr(glversion[1].length())));
@@ -2077,32 +2206,41 @@ struct PahomEngineStruct {
                             minor_gl = 3;
                             std::cout << " (PahomEngine) gl_minor not < 3\n";
                         }*/
+                        Ln.send(1, "PESettings:: Применен gl_minor={}", minor_gl);
                     }
                     if (sSettingsBufferString == "noise=true") {
                         bShowNoiseBackground = true;
-                        //Pengine.log("PESettings:: Применен vsync=true", 1);
+                        Ln.send("PESettings:: Применен noise=true", 1);
                     }
                     if (sSettingsBufferString == "noise=false") {
                         bShowNoiseBackground = false;
-                        //Pengine.log("PESettings:: Применен vsync=false", 1);
+                        Ln.send("PESettings:: Применен noise=false", 1);
                     }
                     //use_low_textures=
                     if (sSettingsBufferString == "use_low_textures=true") {
                         bUseLowTextures = true;
-                        //Pengine.log("PESettings:: Применен vsync=true", 1);
+                        Ln.send("PESettings:: Применен use_low_textures=true", 1);
                     }
                     if (sSettingsBufferString == "use_low_textures=false") {
                         bUseLowTextures = false;
-                        //Pengine.log("PESettings:: Применен vsync=false", 1);
+                        Ln.send("PESettings:: Применен use_low_textures=false", 1);
                     }
                     //use_low_textures=
                     if (sSettingsBufferString == "use_low_audio_quality=true") {
                         bUseLowAudioQuality = true;
-                        //Pengine.log("PESettings:: Применен vsync=true", 1);
+                        Ln.send("PESettings:: Применен use_low_audio_quality=true", 1);
                     }
                     if (sSettingsBufferString == "use_low_audio_quality=false") {
                         bUseLowAudioQuality = false;
-                        //Pengine.log("PESettings:: Применен vsync=false", 1);
+                        Ln.send("PESettings:: Применен use_low_audio_quality=false", 1);
+                    }
+                    if (sSettingsBufferString.rfind(sProxy[0], 0) == 0) {
+                        sProxyHost = sSettingsBufferString.substr(sProxy[0].length());
+                        Ln.send(1,"PESettings:: Применен proxy_host={}",sProxyHost);
+                    }
+                    if (sSettingsBufferString.rfind(sProxy[1], 0) == 0) {
+                        iProxyPort = std::stoi(sSettingsBufferString.substr(sProxy[1].length()));
+                        Ln.send(1, "PESettings:: Применен proxy_port={}", iProxyPort);
                     }
                 }
             }
@@ -2144,7 +2282,7 @@ struct PahomEngineStruct {
         }
         mathValues() {
             std::cout << " (PahomEngine) math allocated\n";
-        }
+        } 
         // set flag to use random engine e.d random_device to #include <random>
         // in true ||  false
         // - true -- enable random_device and std::mt19997
@@ -2205,6 +2343,7 @@ struct PahomEngineStruct {
                 return false;
             }
         }
+        
     };
     struct castValues {
        // Test Func. Universal Add
@@ -2233,12 +2372,14 @@ struct PahomEngineStruct {
             }
             else {
                 std::cout << ("cast->cast_all<error>(type)") << std::endl;
+                return 0;
             }
         }
         template <typename Tm>
         Tm cast_to_string(Tm type) {
             return std::format("{}", type);
         }
+        // NOT SUPPORT String
         template <typename In, typename Out>
         Out unicast(In value) {
             if constexpr (std::is_arithmetic_v<In> && std::is_arithmetic_v<Out>) {
@@ -2318,6 +2459,7 @@ struct PahomEngineStruct {
     castValues   *cast   = new castValues();
     mathValues   *math   = new mathValues();
     gpuRenderOGL *Render = new gpuRenderOGL();
+
     void ShutdownEngine() {
         if (img)         delete img;
         if (ptrGamepad1) delete ptrGamepad1;
@@ -2327,6 +2469,8 @@ struct PahomEngineStruct {
         if (cast)        delete cast;
         if (math)        delete math;
         if (Render)      delete Render;
+        if (lnethttp)    delete lnethttp;
+        if (tui)         delete tui;
     }
     void StyleLoad();
     void StyleLoadBlur();
@@ -2386,6 +2530,7 @@ struct PahomEngineStruct {
     bool bDebug = true;
     bool bFullscreen = false;
     bool bGameOver = false;
+    bool bIsArgumentsNull = false;
     
     int64_t i64CPUDelay = 2;
     // main flags
@@ -2414,10 +2559,9 @@ struct PahomEngineStruct {
         {640, 480}, {800, 600}, {1024, 768}, {1280, 720},
         {1366, 768}, {1600, 900}, {1920, 1080}
     };
-    HANDLE hConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    bool GetGamepadKey(int64_t iKey, int iMaxDelay);
+   bool GetGamepadKey(int64_t iKey, int iMaxDelay);
     void Text(ImVec4 col, std::string text);
-    void log(std::string text, int iLogTypeFlags);
+    void log(std::string text, int type);
     void Tbuffer();
     void logo();
     //
@@ -2425,17 +2569,15 @@ struct PahomEngineStruct {
     int iReloadTexturesPresetID = 0;
     std::string sTexturePresetName = "";
     void SetPresetName(int id) {
-        std::string str[] = { "Низкие" ,"Высокие" ,"Ультра" };
+        const char* str[] = { "Низкие" ,"Высокие" ,"Ультра" };
         sTexturePresetName = str[id];
     }
     void ReloadTextures(int preset_id) {
         int64_t i64Size = 0;
 
         // clear video memory
-        for (int _textures = 0; _textures < std::size(assets.asset); _textures++) {
-            log(std::format(" (OGL) clearing.. {}", _textures), 1);
-            glDeleteTextures(_textures, ImageData.TextureArray);
-        }
+        log(std::format(" (OGL) clearing.. {}", std::size(ImageData.TextureArray)), 1);
+        glDeleteTextures(std::size(ImageData.TextureArray), ImageData.TextureArray);
         // low settings
         if(preset_id == 0){
             
@@ -2506,8 +2648,37 @@ struct PahomEngineStruct {
     }
    
     void progress_bar(float fragtion);
-    bool getPressedKey(int8_t key, bool isTurned = false) {
-        return (isTurned ? GetAsyncKeyState(key) : GetKeyState(key) > 0);
+    bool bIsAsyncKeyboardEvent = false;
+    bool getPressedKey(int key, bool isTurned = true) {
+        if (!bIsAsyncKeyboardEvent) {
+            static const std::unordered_map<int, ImGuiKey> keymap = {
+          {'Q', ImGuiKey_Q}, {'W', ImGuiKey_W}, {'E', ImGuiKey_E},
+          {'R', ImGuiKey_R}, {'T', ImGuiKey_T}, {'Y', ImGuiKey_Y}, {'U', ImGuiKey_U},
+          {'I', ImGuiKey_I}, {'O', ImGuiKey_O}, {'P', ImGuiKey_P}, {'A', ImGuiKey_A},
+          {'S', ImGuiKey_S}, {'D', ImGuiKey_D}, {'F', ImGuiKey_F}, {'G', ImGuiKey_G},
+          {'H', ImGuiKey_H}, {'J', ImGuiKey_J}, {'K', ImGuiKey_K}, {'L', ImGuiKey_L},
+          {'Z', ImGuiKey_Z}, {'X', ImGuiKey_X}, {'C', ImGuiKey_C}, {'V', ImGuiKey_V},
+          {'B', ImGuiKey_B}, {'N', ImGuiKey_N}, {'M', ImGuiKey_M}, {'1', ImGuiKey_1},
+          {'2', ImGuiKey_2}, {'3', ImGuiKey_3}, {'4', ImGuiKey_4}, {'5', ImGuiKey_5},
+          {'6', ImGuiKey_6}, {'7', ImGuiKey_7}, {'8', ImGuiKey_8}, {'9', ImGuiKey_9},
+          {'0', ImGuiKey_0}, {VK_SPACE,ImGuiKey_Space},{VK_RETURN,ImGuiKey_Enter},
+          {VK_LEFT,ImGuiKey_LeftArrow},{VK_RIGHT,ImGuiKey_RightArrow},{VK_F1,ImGuiKey_F1},{VK_F2,ImGuiKey_F2},
+          {VK_F3,ImGuiKey_F3},{VK_F4,ImGuiKey_F4},{VK_F5,ImGuiKey_F5},{VK_F6,ImGuiKey_F6},
+          {VK_F7,ImGuiKey_F7},{VK_F8,ImGuiKey_F8},{VK_F9,ImGuiKey_F9},{VK_F10,ImGuiKey_F10},
+          {VK_F11,ImGuiKey_F11},{ VK_F12,ImGuiKey_F12 },
+            };
+            auto iter = keymap.find(key);
+            if (iter != keymap.end()) {
+                return ImGui::IsKeyDown(iter->second);
+            }
+            
+        }
+        else {
+            return GetAsyncKeyState(key);
+        }
+    }
+    bool getPressedKey_v2(ImGuiKey key) {
+        return ImGui::IsKeyPressed(key,false);
     }
 
     void setTextCenterXY(const char* text);
@@ -2518,7 +2689,7 @@ struct PahomEngineStruct {
     void selectedItem(bool v, float rounding);
     void selectedItemCol(bool v, bool v1);
     void stdoutColored(std::string out, int16_t i16colorText);
-    bool bLogEnabled = false;
+    
     //
     template <typename T> using ArrayBuf = std::vector<T>;
     void clearPos();
@@ -2532,8 +2703,13 @@ struct PahomEngineStruct {
     void TextColored(ImVec4 col,const std::format_string<Tm...> _Fmt, Tm&&... _Args) {
         ImGui::TextColored(col,_STD vformat(_Fmt.get(), _STD make_format_args(_Args...)).c_str());
     }
+    Logger* logs = new Logger();
    
+    
 };
+void PahomEngineStruct::log(std::string text, int type = 1) {
+    logs->send(text, type);
+}
 void PahomEngineStruct::selectedItem(bool v,float rounding = 20) {
     ImDrawList* dw = ImGui::GetWindowDrawList();
     if (v) {
@@ -2569,78 +2745,7 @@ void PahomEngineStruct::clearPos() {
     fBreadPosX = 0;
     fBreadPosY = 0;
 }
-enum type {
-    WARN = 0,
-    INFO = 1,
-    ERR = 2,
-    DEBUG = 3,
-};
-void  PahomEngineStruct::log(std::string text,int iLogTypeFlags = 1) {
-    auto now = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm* local_tm = std::localtime(&t);
 
-    int32_t i32LogColorText = 0;
-    bLogEnabled = true;
-    std::vector<std::string_view> typeStr = {
-        "WARN",
-        "INFO",
-        "ERR",
-        "DEBUG"
-    };
-    std::string_view typeCurrent;
-    typeCurrent = (iLogTypeFlags == type::WARN ? typeStr[0] : typeStr[iLogTypeFlags]);
-    typeCurrent = (iLogTypeFlags == type::INFO ? typeStr[1] : typeStr[iLogTypeFlags]);
-    typeCurrent = (iLogTypeFlags == type::ERR  ? typeStr[2] : typeStr[iLogTypeFlags]);
-    typeCurrent = (iLogTypeFlags == type::DEBUG ? typeStr[3] : typeStr[iLogTypeFlags]);
-    ImVec4 Time = {
-       static_cast<float>(local_tm->tm_hour),      // 0–23
-       static_cast<float>(local_tm->tm_min),       // 0–59
-       static_cast<float>(local_tm->tm_sec),       // 0–59
-       static_cast<float>(now.time_since_epoch().count() % 10000000 / 10000.0f) // миллисекунды (примерно)
-    };
-    if (bLogEnabled) {
-        static ColorV3 colorBacki32 = { 12,12,19 };
-        static ColorV3 colorTexti32 = {0,0,0};
-        switch (iLogTypeFlags) {
-        case type::WARN: 
-            colorTexti32 = { 200,250,0 };
-            colorBacki32 = { 12,12,19 };
-            i32LogColorText = 15;
-            break;
-        case type::INFO:
-            colorBacki32 = { 32,32,49 };
-            colorTexti32 = { 56,106,253 };
-            i32LogColorText = 11;
-            break;
-        case type::ERR:
-            colorBacki32 = { 12,12,19 };
-            colorTexti32 = { 250,0,140 };
-            i32LogColorText = 12;
-            break;
-        case type::DEBUG:
-            colorBacki32 = { 12,12,19 };
-            colorTexti32 = { 0,255,100 };
-            i32LogColorText = 10;
-            break;
-        
-        }
-        //SetConsoleTextAttribute(hConsoleHandle, i32LogColorText);
-       // std::cout << std::format(" {}::({}:{}:{}) ", typeCurrent, Time.x, Time.y, Time.z) << " [PahomEngine] " << text << std::endl;
-        if(bColoredConsole)
-        {
-            console.pout(std::format(" {}::({}:{}:{}) [PahomEngine] {}\n ", typeCurrent, Time.x, Time.y, Time.z, text), colorTexti32, colorBacki32, false, false);
-        }
-        else {
-            SetConsoleTextAttribute(hConsoleHandle, i32LogColorText);
-            std::cout << std::format(" {}::({}:{}:{}) ", typeCurrent, Time.x, Time.y, Time.z) << " [PahomEngine] " << text << std::endl;
-        }
-       // SetConsoleTextAttribute(hConsoleHandle, 15);
-    }
-    else {
-        Event.WriteLog(std::format(" {}::({}:{}:{}) {}", typeCurrent, Time.x, Time.y, Time.z, text));
-    }
-}
 void  PahomEngineStruct::Text(ImVec4 col, std::string text) {
     PahomEngineStruct::Event.Text(col,text);
 }
@@ -2797,16 +2902,16 @@ void PahomEngineStruct::logo() {
     if(bColoredConsole)
     {
         for (int64_t c = 0; c < PAHOM_ENGINE.size(); c++) {
-            console.pout(std::format("{}", PAHOM_ENGINE[c]), console.randColor(), ColorV3(19, 19, 22), true, false);
+            tui->pout(std::format("{}", PAHOM_ENGINE[c]), tui->randColor(), ColorV3(19, 19, 22), true, false);
         }
-        console.TestColors({ 12,12 });
+        tui->TestColors({ 12,12 });
     }
     else {
         for (int64_t c = 0; c < PAHOM_ENGINE.size(); c++) {
             SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), rand() % 15);
             std::cout << (std::format("{}", PAHOM_ENGINE[c]));
         }
-       // console.TestColors({ 12,12 });
+       // tui->TestColors({ 12,12 });
     }
 }
 void PahomEngineStruct::stdoutColored(std::string out,int16_t i16colorText) {
